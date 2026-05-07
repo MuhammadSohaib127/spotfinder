@@ -53,10 +53,14 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// DELETE /spots/:id - delete a spot
 router.delete('/:id', async (req, res) => {
   try {
-    await container.item(req.params.id, req.params.id).delete();
+    const { resources } = await container.items
+      .query(`SELECT * FROM c WHERE c.id = '${req.params.id}'`)
+      .fetchAll();
+    if (resources.length === 0) return res.status(404).json({ error: 'Spot not found' });
+    const spot = resources[0];
+    await container.item(spot.id, spot.spotType).delete();
     res.json({ message: 'Spot deleted' });
   } catch (err) {
     res.status(500).json({ error: err.message });

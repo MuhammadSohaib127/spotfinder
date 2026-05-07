@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SpotFinder</title>
+  <style>* 
+    { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f7f0; color: #2d4a2d; }
+    header {
+      background: #2e7d32;
+      padding: 15px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+    header h1 { color: white; font-size: 24px; }
+    header p { color: #c8e6c9; font-size: 13px; }
+    .container { display: flex; height: calc(100vh - 60px); }
+    .sidebar {
+      width: 320px;
+      background: white;
+      padding: 20px;
+      overflow-y: auto;
+      border-right: 1px solid #c8e6c9;
+      box-shadow: 2px 0 8px rgba(0,0,0,0.05);
+    }
+    .sidebar h2 { color: #2e7d32; margin-bottom: 15px; font-size: 16px; }
+    .form-group { margin-bottom: 12px; }
+    .form-group label { display: block; color: #555; font-size: 13px; margin-bottom: 5px; }
+    .form-group input, .form-group select {
+      width: 100%;
+      padding: 9px;
+      background: #f9fbe7;
+      border: 1px solid #a5d6a7;
+      border-radius: 8px;
+      color: #2d4a2d;
+      font-size: 13px;
+    }
+    .form-group input:focus, .form-group select:focus {
+      outline: none;
+      border-color: #2e7d32;
+    }
+    .btn {
+      width: 100%;
+      padding: 10px;
+      background: #2e7d32;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-weight: bold;
+      cursor: pointer;
+      margin-top: 5px;
+      font-size: 14px;
+    }
+    .btn:hover { background: #1b5e20; }
+    .btn-danger { background: #e53935; color: white; margin-top: 8px; }
+    .btn-danger:hover { background: #b71c1c; }
+    .btn-refresh { background: #43a047; margin-top: 8px; }
+    .btn-refresh:hover { background: #2e7d32; }
+    .spots-list { margin-top: 20px; }
+    .spot-card {
+      background: #f1f8e9;
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 10px;
+      border-left: 4px solid #66bb6a;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    }
+    .spot-card.warden { border-left-color: #e53935; background: #fff3e0; }
+    .spot-card h3 { font-size: 14px; color: #2e7d32; margin-bottom: 5px; }
+    .spot-card.warden h3 { color: #e53935; }
+    .spot-card p { font-size: 12px; color: #666; margin-bottom: 3px; }
+    .map-container { flex: 1; position: relative; }
+    #map { width: 100%; height: 100%; background: #e8f5e9; display: flex; align-items: center; justify-content: center; color: #aaa; font-size: 18px; }
+    .status {
+      position: absolute; top: 10px; right: 10px;
+      background: white; padding: 8px 14px;
+      border-radius: 20px; font-size: 12px; color: #2e7d32;
+      border: 1px solid #a5d6a7;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      font-weight: bold;
+    }   
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>🅿️ SpotFinder</h1>
+    <p>Real-time community parking intelligence</p>
+  </div>
+  <div style="color:#aaa; font-size:13px;">Find it. Park it. Done.</div>
+</header>
+
+<div class="container">
+  <div class="sidebar">
+    <h2>📍 Report a Spot</h2>
+    <div class="form-group">
+      <label>Your Name</label>
+      <input type="text" id="reporterId" placeholder="e.g. John" />
+    </div>
+    <div class="form-group">
+      <label>Address</label>
+      <input type="text" id="address" placeholder="e.g. Broad St, Birmingham" />
+    </div>
+    <div class="form-group">
+      <label>Spot Type</label>
+      <select id="spotType">
+        <option value="free">Free Street</option>
+        <option value="paid">Paid Car Park</option>
+        <option value="permit">Permit Zone</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Available For (minutes)</label>
+      <input type="number" id="availableFor" value="30" />
+    </div>
+    <div class="form-group">
+      <label>
+        <input type="checkbox" id="wardenSighted" />
+        ⚠️ Warden Sighted!
+      </label>
+    </div>
+    <button class="btn" onclick="reportSpot()">Report Spot</button>
+<button class="btn btn-refresh" onclick="loadSpots()">🔄 Refresh Spots</button>
+
+<div style="margin-top:20px; border-top: 1px solid #c8e6c9; padding-top:15px;">
+  <h2 style="color:#2e7d32; margin-bottom:10px;">📎 Upload a File</h2>
+  <div class="form-group">
+    <label>Choose image or file</label>
+    <input type="file" id="fileInput" accept="image/*,.pdf" style="background:white; padding:5px;" />
+  </div>
+  <button class="btn" onclick="uploadFile()">Upload File</button>
+  <button class="btn btn-refresh" style="margin-top:8px;" onclick="loadFiles()">🔄 Show Uploads</button>
+  <div id="filesList" style="margin-top:10px;"></div>
+  </div>
+
+    <div class="spots-list">
+      <h2>🗺️ Active Spots</h2>
+      <div id="spotsList">Loading...</div>
+    </div>
+  </div>
+
+  <div class="map-container">
+    <div id="map"></div>
+    <div class="status" id="status">Connecting to SpotFinder API...</div>
+  </div>
+</div>
+
+<script>
+  const API = 'https://spotfinder-app.azurewebsites.net';
+
+  async function loadSpots() {
+    document.getElementById('status').textContent = 'Loading spots...';
+    try {
+      const res = await fetch(`${API}/spots`);
+      const spots = await res.json();
+      const list = document.getElementById('spotsList');
+      if (spots.length === 0) {
+        list.innerHTML = '<p style="color:#aaa;font-size:13px;">No spots reported yet.</p>';
+      } else {
+        list.innerHTML = spots.map(s => `
+          <div class="spot-card ${s.wardenSighted ? 'warden' : ''}">
+            <h3>${s.wardenSighted ? '⚠️ WARDEN' : '🅿️ ' + s.spotType.toUpperCase()}</h3>
+            <p>📍 ${s.address || 'Location reported'}</p>
+            <p>⏱️ Available for: ${s.availableFor} mins</p>
+            <p>👤 Reporter: ${s.reporterId}</p>
+            <p>⭐ Trust: ${(s.trustScore * 100).toFixed(0)}%</p>
+            <button class="btn btn-danger" onclick="deleteSpot('${s.id}')">Remove</button>
+          </div>
+        `).join('');
+      }
+      document.getElementById('status').textContent = `${spots.length} active spot(s)`;
+    } catch (err) {
+      document.getElementById('status').textContent = 'Error loading spots';
+      document.getElementById('spotsList').innerHTML = '<p style="color:#ff4757;">Could not connect to API</p>';
+    }
+  }
+
+  async function reportSpot() {
+    const spot = {
+      reporterId: document.getElementById('reporterId').value || 'anonymous',
+      address: document.getElementById('address').value,
+      spotType: document.getElementById('spotType').value,
+      availableFor: parseInt(document.getElementById('availableFor').value),
+      wardenSighted: document.getElementById('wardenSighted').checked,
+      location: { type: 'Point', coordinates: [-1.8904, 52.4862] }
+    };
+    try {
+      const res = await fetch(`${API}/spots`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(spot)
+      });
+      const data = await res.json();
+      alert('Spot reported successfully!');
+      loadSpots();
+    } catch (err) {
+      alert('Error reporting spot: ' + err.message);
+    }
+  }
+
+  async function deleteSpot(id) {
+    try {
+      await fetch(`${API}/spots/${id}`, { method: 'DELETE' });
+      loadSpots();
+    } catch (err) {
+      alert('Error deleting spot');
+    }
+  }
+
+  loadSpots();
+  async function uploadFile() {
+  const fileInput = document.getElementById('fileInput');
+  const file = fileInput.files[0];
+  if (!file) { alert('Please select a file first!'); return; }
+  try {
+    const res = await fetch(`${API}/upload`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': file.type,
+        'x-filename': file.name
+      },
+      body: file
+    });
+    const data = await res.json();
+    alert('File uploaded successfully!');
+    loadFiles();
+  } catch (err) {
+    alert('Error uploading file: ' + err.message);
+  }
+}
+
+async function loadFiles() {
+  try {
+    const res = await fetch(`${API}/upload`);
+    const files = await res.json();
+    const list = document.getElementById('filesList');
+    if (files.length === 0) {
+      list.innerHTML = '<p style="color:#aaa;font-size:13px;">No files uploaded yet.</p>';
+    } else {
+      list.innerHTML = files.map(f => `
+        <div class="spot-card">
+          <h3>📄 ${f.name}</h3>
+          <a href="${f.url}" target="_blank" style="color:#2e7d32; font-size:12px;">View File</a>
+          <button class="btn btn-danger" onclick="deleteFile('${f.name}')">Remove</button>
+        </div>
+      `).join('');
+    }
+  } catch (err) {
+    document.getElementById('filesList').innerHTML = '<p style="color:#ff4757;">Could not load files</p>';
+  }
+}
+async function deleteFile(filename) {
+  try {
+    await fetch(`${API}/upload/${encodeURIComponent(filename)}`, { method: 'DELETE' });
+    alert('File deleted!');
+    loadFiles();
+  } catch (err) {
+    alert('Error deleting file: ' + err.message);
+  }
+}
+</script>
+
+</body>
+</html>
